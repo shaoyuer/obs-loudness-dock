@@ -65,7 +65,6 @@ target_link_libraries(${PROJECT_NAME}
 	Qt::Core
 	Qt::Widgets
 	Qt::Gui
-	Qt::GuiPrivate
 )
 
 if(PC_LIBEBUR128_FOUND)
