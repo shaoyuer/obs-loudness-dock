@@ -18,7 +18,7 @@ This is a plugin for OBS Studio to provide a dock window displaying EBU R 128 lo
 sed -i -e 's/project(obs-loudness-dock/project(loudness-dock/g' CMakeLists.txt
 
 %build
-%{cmake} -DLINUX_PORTABLE=OFF -DCMAKE_SKIP_RPATH:BOOL=ON -DQT_VERSION=6
+%{cmake} -DQT_VERSION=6 -DINSTALL_LICENSE_FILES:BOOL=OFF
 %{cmake_build}
 
 %install

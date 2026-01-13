@@ -35,6 +35,11 @@ bool obs_frontend_add_dock_by_id_compat(const char *id, const char *title, void 
 #define obs_frontend_add_dock_by_id obs_frontend_add_dock_by_id_compat
 #endif
 
+const char *obs_module_name(void)
+{
+	return obs_module_text("Module.Name");
+}
+
 bool obs_module_load(void)
 {
 	blog(LOG_INFO, "plugin loaded (version %s)", PLUGIN_VERSION);
@@ -45,9 +50,4 @@ void obs_module_post_load(void)
 {
 	ws_vendor = obs_websocket_register_vendor(PLUGIN_NAME);
 	obs_frontend_add_dock_by_id(ID_PREFIX ".main", obs_module_text("LoudnessDock.Title"), create_loudness_dock());
-}
-
-void obs_module_unload()
-{
-	blog(LOG_INFO, "plugin unloaded");
 }

@@ -24,8 +24,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        obs: [28, 30]
-        ubuntu: ['ubuntu-22.04']
+        include:
+          - obs: 28
+            ubuntu: 'ubuntu-22.04'
+          - obs: 30
+            ubuntu: 'ubuntu-22.04'
+          - obs: 31
+            ubuntu: 'ubuntu-24.04'
+          - obs: 32
+            ubuntu: 'ubuntu-24.04'
     defaults:
       run:
         shell: bash
@@ -45,6 +52,7 @@ jobs:
 
       - name: Build plugin
         run: |
+          set -ex
           sudo apt install -y libebur128-1 libebur128-dev
           cmake -S . -B build \
             -D CMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -55,22 +63,32 @@ jobs:
           make -j4
           make package
           echo "FILE_NAME=$(find $PWD -name '*.deb' | head -n 1)" >> $GITHUB_ENV
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.artifactName }}-linux-obs${{ matrix.obs }}-${{ matrix.ubuntu }}
           path: '${{ env.FILE_NAME }}'
-      - name: Check package
+
+      - name: 'Setup with onsdriver'
+        uses: noris-plugins-for-obs/onsdriver@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          obs-plugins: ${{ env.FILE_NAME }}
+          first-time-log: ./logs/
+
+      - name: 'Test with onsdriver'
         run: |
-          . build/ci/ci_includes.generated.sh
-          set -ex
-          sudo apt install -y '${{ env.FILE_NAME }}'
-          ldd /usr/lib/x86_64-linux-gnu/obs-plugins/${PLUGIN_NAME}.so > ldd.out
-          if grep not.found ldd.out ; then
-            echo "Error: unresolved shared object." >&2
-            exit 1
-          fi
-          ls /usr/share/obs/obs-plugins/${PLUGIN_NAME}/
+          python -m unittest discover test-onsdriver/
+
+      - name: 'Upload logs of onsdriver'
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-${{ env.artifactName }}-linux-obs${{ matrix.obs }}-${{ matrix.ubuntu }}
+          path: |
+            logs/*
 
   macos_build:
     runs-on: macos-14
@@ -79,9 +97,14 @@ jobs:
       matrix:
         include:
           - obs: 28
-            arch: universal
+            arch: 'universal'
+            onsdriver-obs-version: '< 32'
           - obs: 30
-            arch: universal
+            arch: 'universal'
+            onsdriver-obs-version: '< 32'
+          - obs: 32
+            arch: 'universal'
+            onsdriver-obs-version: ''
     defaults:
       run:
         shell: bash
@@ -113,14 +136,14 @@ jobs:
 
       - name: Install Apple Developer Certificate
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
-        uses: apple-actions/import-codesign-certs@63fff01cd422d4b7b855d40ca1e9d34d2de9427d
+        uses: apple-actions/import-codesign-certs@63fff01cd422d4b7b855d40ca1e9d34d2de9427d # v3.0.0
         with:
           keychain-password: ${{ github.run_id }}
           p12-file-base64: ${{ secrets.MACOS_SIGNING_CERT }}
           p12-password: ${{ secrets.MACOS_SIGNING_CERT_PASSWORD }}
 
       - name: Set Signing Identity
-        if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' && steps.setup.outputs.haveNotarizationUser == 'true' }}
         run: |
           set -e
           TEAM_ID=$(echo "${{ secrets.MACOS_SIGNING_APPLICATION_IDENTITY }}" | sed 's/.*(\([A-Za-z0-9]*\))$/\1/')
@@ -133,7 +156,6 @@ jobs:
         id: obsdeps
         uses: norihiro/obs-studio-devel-action@v2
         with:
-          path: /tmp/deps-${{ matrix.obs }}-${{ matrix.arch }}
           arch: ${{ matrix.arch }}
           obs: ${{ matrix.obs }}
           verbose: true
@@ -159,9 +181,6 @@ jobs:
           set -ex
           . build/ci/ci_includes.generated.sh
           cmake --install build --config RelWithDebInfo --prefix=release
-          (cd release/${PLUGIN_NAME}.plugin/Contents && ../../../ci/macos/change-rpath.sh -obs ${{ matrix.obs }} -lib lib/ MacOS/${PLUGIN_NAME})
-          cp LICENSE release/${PLUGIN_NAME}.plugin/Contents/Resources/LICENSE-$PLUGIN_NAME
-          cp deps/libebur128/COPYING release/${PLUGIN_NAME}.plugin/Contents/Resources/LICENSE-libebur128
 
       - name: Codesign
         if: ${{ github.event_name != 'pull_request' && steps.setup.outputs.haveCodesignIdent == 'true' }}
@@ -186,7 +205,6 @@ jobs:
           zipfile=$PWD/package/${PLUGIN_NAME}${PKG_SUFFIX}.zip
           mkdir package
           (cd release/ && zip -r $zipfile ${PLUGIN_NAME}.plugin)
-          ci/macos/install-packagesbuild.sh
           packagesbuild \
             --build-folder $PWD/package/ \
             build/installer-macOS.generated.pkgproj
@@ -197,7 +215,6 @@ jobs:
           . build/ci/ci_includes.generated.sh
           pkgfile=package/${PLUGIN_NAME}${PKG_SUFFIX}.pkg
           set -e
-          . build/ci/ci_includes.generated.sh
           productsign --sign "${{ secrets.MACOS_SIGNING_INSTALLER_IDENTITY }}" $pkgfile package/${PLUGIN_NAME}-signed.pkg
           mv package/${PLUGIN_NAME}-signed.pkg $pkgfile
 
@@ -215,13 +232,42 @@ jobs:
           name: ${{ env.artifactName }}-macos-obs${{ matrix.obs }}-${{ matrix.arch }}
           path: package/*
 
+      - name: 'Setup with onsdriver'
+        uses: noris-plugins-for-obs/onsdriver@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          obs-plugins: package/*.pkg
+          obs-version: ${{ matrix.onsdriver-obs-version }}
+          first-time-log: ./logs/
+
+      - name: 'Test with onsdriver'
+        run: |
+          python -m unittest discover test-onsdriver/
+
+      - name: 'Upload logs of onsdriver'
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-${{ env.artifactName }}-macos-obs${{ matrix.obs }}-${{ matrix.arch }}
+          path: |
+            logs/*
+
   windows_build:
     runs-on: windows-2022
     strategy:
       fail-fast: false
       matrix:
-        obs: [28, 30]
-        arch: [x64]
+        include:
+          - obs: 28
+            arch: 'x64'
+            onsdriver-obs-version: '< 32'
+          - obs: 30
+            arch: 'x64'
+            onsdriver-obs-version: '< 32'
+          - obs: 32
+            arch: 'x64'
+            onsdriver-obs-version: ''
     env:
       visualStudio: 'Visual Studio 17 2022'
       Configuration: 'RelWithDebInfo'
@@ -233,6 +279,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
       - name: Download obs-studio
         id: obsdeps
         uses: norihiro/obs-studio-devel-action@v2
@@ -249,10 +296,33 @@ jobs:
           cmake -S . -B build ${{ steps.obsdeps.outputs.PLUGIN_CMAKE_OPTIONS_PS }} @CmakeArgs
           cmake --build build --config RelWithDebInfo -j 4
           cmake --install build --config RelWithDebInfo --prefix "$(Resolve-Path -Path .)/release"
+
       - name: Package plugin
         run: ci/windows/package-windows.cmd ${{ matrix.obs }}
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.artifactName }}-windows-obs${{ matrix.obs }}-${{ matrix.arch }}
           path: package/*
+
+      - name: 'Setup with onsdriver'
+        uses: noris-plugins-for-obs/onsdriver@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          obs-plugins: package/*.exe
+          obs-version: ${{ matrix.onsdriver-obs-version }}
+          first-time-log: ./logs/
+
+      - name: 'Test with onsdriver'
+        run: |
+          python -m unittest discover test-onsdriver/
+
+      - name: 'Upload logs of onsdriver'
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-${{ env.artifactName }}-windows-obs${{ matrix.obs }}-${{ matrix.arch }}
+          path: |
+            logs/*
