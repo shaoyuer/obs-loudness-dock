@@ -5,7 +5,7 @@ Test plugin is loaded
 import unittest
 from onsdriver import obstest
 
-PLUGIN_NAME = 'obs-loudness-dock'
+PLUGIN_NAME = 'loudness-dock'
 
 
 class PluginLoadTest(obstest.OBSTest):

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(obs-loudness-dock VERSION 0.4.2)
+project(loudness-dock VERSION 0.4.2)
 
 set(PLUGIN_AUTHOR "Norihiro Kamae")
 
@@ -171,5 +171,9 @@ if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
 	configure_file(
 		installer/installer-macOS.pkgproj.in
 		installer-macOS.generated.pkgproj
+	)
+	configure_file(
+		installer/installer-macOS-post.sh.in
+		installer-macOS-post.generated.sh
 	)
 endif()
