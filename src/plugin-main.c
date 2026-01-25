@@ -27,6 +27,7 @@ OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
 obs_websocket_vendor ws_vendor = NULL;
+obs_websocket_vendor ws_vendor_compat = NULL;
 
 void *create_loudness_dock();
 
@@ -49,5 +50,6 @@ bool obs_module_load(void)
 void obs_module_post_load(void)
 {
 	ws_vendor = obs_websocket_register_vendor(PLUGIN_NAME);
+	ws_vendor_compat = obs_websocket_register_vendor("obs-" PLUGIN_NAME);
 	obs_frontend_add_dock_by_id(ID_PREFIX ".main", obs_module_text("LoudnessDock.Title"), create_loudness_dock());
 }

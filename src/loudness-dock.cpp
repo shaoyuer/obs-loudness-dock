@@ -41,6 +41,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define QT_TO_UTF8(str) str.toUtf8().constData()
 
 extern "C" obs_websocket_vendor ws_vendor;
+extern "C" obs_websocket_vendor ws_vendor_compat;
 
 static loudness_dock_config_s load_config()
 {
@@ -266,6 +267,12 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 		obs_websocket_vendor_register_request(ws_vendor, "reset", ws_reset_cb, this);
 		obs_websocket_vendor_register_request(ws_vendor, "pause", ws_pause_cb, this);
 	}
+	if (ws_vendor_compat) {
+		obs_websocket_vendor_register_request(ws_vendor_compat, "get_loudness", ws_compat_get_loudness_cb,
+						      this);
+		obs_websocket_vendor_register_request(ws_vendor_compat, "reset", ws_compat_reset_cb, this);
+		obs_websocket_vendor_register_request(ws_vendor_compat, "pause", ws_compat_pause_cb, this);
+	}
 }
 
 LoudnessDock::~LoudnessDock()
@@ -275,6 +282,11 @@ LoudnessDock::~LoudnessDock()
 	if (!frontend_exited)
 		obs_frontend_remove_event_callback(LoudnessDock::on_frontend_event, this);
 
+	if (ws_vendor_compat) {
+		obs_websocket_vendor_unregister_request(ws_vendor_compat, "get_loudness");
+		obs_websocket_vendor_unregister_request(ws_vendor_compat, "reset");
+		obs_websocket_vendor_unregister_request(ws_vendor_compat, "pause");
+	}
 	if (ws_vendor) {
 		obs_websocket_vendor_unregister_request(ws_vendor, "get_loudness");
 		obs_websocket_vendor_unregister_request(ws_vendor, "reset");
@@ -622,6 +634,24 @@ void LoudnessDock::ws_pause_cb(obs_data_t *request, obs_data_t *, void *priv_dat
 			ld->on_pause(p);
 		}
 	});
+}
+
+void LoudnessDock::ws_compat_get_loudness_cb(obs_data_t *request, obs_data_t *response, void *priv_data)
+{
+	blog(LOG_WARNING, "Vendor 'obs-%s' is deprecated, use '%s' instead.", PLUGIN_NAME, PLUGIN_NAME);
+	ws_get_loudness_cb(request, response, priv_data);
+}
+
+void LoudnessDock::ws_compat_reset_cb(obs_data_t *request, obs_data_t *response, void *priv_data)
+{
+	blog(LOG_WARNING, "Vendor 'obs-%s' is deprecated, use '%s' instead.", PLUGIN_NAME, PLUGIN_NAME);
+	ws_reset_cb(request, response, priv_data);
+}
+
+void LoudnessDock::ws_compat_pause_cb(obs_data_t *request, obs_data_t *response, void *priv_data)
+{
+	blog(LOG_WARNING, "Vendor 'obs-%s' is deprecated, use '%s' instead.", PLUGIN_NAME, PLUGIN_NAME);
+	ws_pause_cb(request, response, priv_data);
 }
 
 void LoudnessDock::on_frontend_event(enum obs_frontend_event event)

@@ -82,6 +82,10 @@ private:
 	static void ws_reset_cb(obs_data_t *, obs_data_t *, void *);
 	static void ws_pause_cb(obs_data_t *, obs_data_t *, void *);
 
+	static void ws_compat_get_loudness_cb(obs_data_t *, obs_data_t *, void *);
+	static void ws_compat_reset_cb(obs_data_t *, obs_data_t *, void *);
+	static void ws_compat_pause_cb(obs_data_t *, obs_data_t *, void *);
+
 	static void on_frontend_event(enum obs_frontend_event event, void *);
 
 	inline loudness_t *get()
