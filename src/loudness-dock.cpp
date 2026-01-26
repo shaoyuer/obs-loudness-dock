@@ -195,7 +195,7 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 		if (valueLabel) {
 			*valueLabel = new QLabel("-", this);
 			topLayout->addWidget(*valueLabel, row, 1);
-			(*valueLabel)->setAlignment(Qt::AlignRight);
+			(*valueLabel)->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
 			QFontMetrics metrics((*valueLabel)->font());
 			QRect bounds = metrics.boundingRect(QStringLiteral("%1").arg(-199.0, 2, 'f', 1));
