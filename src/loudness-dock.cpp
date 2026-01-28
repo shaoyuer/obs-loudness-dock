@@ -340,7 +340,8 @@ void LoudnessDock::update_pause_button()
 	}
 
 	paused = loudness_paused(loudness);
-	pauseButton->setText(pause_resume_button_text(paused));
+	if (pauseButton)
+		pauseButton->setText(pause_resume_button_text(paused));
 }
 
 void LoudnessDock::on_pause(bool pause_)
@@ -351,10 +352,9 @@ void LoudnessDock::on_pause(bool pause_)
 	if (!loudness)
 		return;
 
-	if (pauseButton) {
-		pauseButton->setText(pause_resume_button_text(pause_));
-	}
 	paused = pause_;
+	if (pauseButton)
+		pauseButton->setText(pause_resume_button_text(pause_));
 
 	loudness_set_pause(loudness, pause_);
 	update_count = 0;
@@ -759,13 +759,15 @@ loudness_t *LoudnessDock::get_by_name(const char *name)
 			return ll[i];
 	}
 
+	blog(LOG_ERROR, "Cannot find tab name '%s'", name);
+
 	return nullptr;
 }
 
 loudness_t *LoudnessDock::get_by_name_in_data(obs_data_t *request)
 {
-	const char *name = obs_data_get_string(request, "name");
-	if (name)
+	const char *name;
+	if (obs_data_has_user_value(request, "name") && (name = obs_data_get_string(request, "name")))
 		return get_by_name(name);
 
 	return nullptr;
