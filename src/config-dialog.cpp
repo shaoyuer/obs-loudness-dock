@@ -141,8 +141,9 @@ void ConfigDialog::TabTableAdd(int ix, const struct loudness_dock_config_s::tab_
 	trigger->setCurrentIndex(tab.trigger_mode); /* Assumes the code starts from 0 and no continuous */
 	tabTable->setCellWidget(ix, 2, trigger);
 
-	connect(trigger, &QComboBox::currentIndexChanged, [this, trigger, ix](int) {
+	connect(trigger, &QComboBox::currentIndexChanged, [this, trigger](int) {
 		tabTable->blockSignals(true);
+		int ix = tabTable->currentRow();
 		config.tabs[ix].trigger_mode = (loudness_dock_config_s::trigger_mode_e)trigger->currentData().toInt();
 		tabTable->blockSignals(false);
 	});
