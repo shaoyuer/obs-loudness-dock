@@ -11,6 +11,7 @@ def _get_args():
     parser.add_argument('-r', '--reset', action='store_true')
     parser.add_argument('-p', '--pause', action='store_true')
     parser.add_argument('-s', '--resume', action='store_true')
+    parser.add_argument('-l', '--list-names', action='store_true')
     parser.add_argument('--name', action='store', default=None)
     return parser.parse_args()
 
@@ -22,6 +23,14 @@ def _main():
     data = {}
     if args.name:
         data['name'] = args.name
+
+    if args.list_names:
+        res = cl.send('CallVendorRequest', {
+            'vendorName': 'loudness-dock',
+            'requestType': 'get_names',
+        })
+        print(res.response_data)
+        return
 
     if args.pause:
         cl.send('CallVendorRequest', {
