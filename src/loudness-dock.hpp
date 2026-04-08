@@ -74,6 +74,8 @@ private:
 	void ws_get_loudness_cb(obs_data_t *, obs_data_t *);
 	static void ws_reset_cb(obs_data_t *, obs_data_t *, void *);
 	static void ws_pause_cb(obs_data_t *, obs_data_t *, void *);
+	static void ws_get_names_cb(obs_data_t *, obs_data_t *, void *);
+	void ws_get_names_cb(obs_data_array_t *names);
 
 	static void ws_compat_get_loudness_cb(obs_data_t *, obs_data_t *, void *);
 	static void ws_compat_reset_cb(obs_data_t *, obs_data_t *, void *);

@@ -269,6 +269,7 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 		obs_websocket_vendor_register_request(ws_vendor, "get_loudness", ws_get_loudness_cb, this);
 		obs_websocket_vendor_register_request(ws_vendor, "reset", ws_reset_cb, this);
 		obs_websocket_vendor_register_request(ws_vendor, "pause", ws_pause_cb, this);
+		obs_websocket_vendor_register_request(ws_vendor, "get_names", ws_get_names_cb, this);
 	}
 	if (ws_vendor_compat) {
 		obs_websocket_vendor_register_request(ws_vendor_compat, "get_loudness", ws_compat_get_loudness_cb,
@@ -630,6 +631,29 @@ void LoudnessDock::ws_pause_cb(obs_data_t *request, obs_data_t *, void *priv_dat
 			ld->on_pause(p);
 		}
 	});
+}
+
+void LoudnessDock::ws_get_names_cb(obs_data_t *, obs_data_t *response, void *priv_data)
+{
+	auto ld = static_cast<LoudnessDock *>(priv_data);
+
+	obs_data_array_t *names = obs_data_array_create();
+
+	run_in_ui_and_wait([ld, names]() { ld->ws_get_names_cb(names); });
+
+	obs_data_set_array(response, "names", names);
+	obs_data_array_release(names);
+}
+
+void LoudnessDock::ws_get_names_cb(obs_data_array_t *names)
+{
+	ASSERT_THREAD(OBS_TASK_UI);
+
+	for (size_t i = 0; i < config.tabs.size(); i++) {
+		obs_data_t *item = obs_data_create();
+		obs_data_set_string(item, "name", config.tabs[i].name.c_str());
+		obs_data_array_push_back(names, item);
+	}
 }
 
 void LoudnessDock::ws_compat_get_loudness_cb(obs_data_t *request, obs_data_t *response, void *priv_data)
