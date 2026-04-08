@@ -391,16 +391,12 @@ void LoudnessDock::on_timer()
 	else
 		update_count++;
 
-	std::unique_lock<std::mutex> lock(results_mutex);
-
 	loudness_get(loudness, results, flags);
 
 	for (auto &r : results) {
 		if (r < -192.0)
 			r = -HUGE_VAL;
 	}
-
-	lock.unlock();
 
 	if (flags & LOUDNESS_GET_SHORT) {
 		if (update_count % 4 == 0) {
@@ -473,8 +469,6 @@ void LoudnessDock::apply_move_config(loudness_dock_config_s &cfg)
 		label_range->hide();
 		label_peak->hide();
 	}
-
-	std::unique_lock<std::mutex> lock(results_mutex);
 
 	for (uint32_t i = 0; i < cfg.tabs.size() && (int)cfg.tabs.size() > tabbar->count(); i++) {
 		const auto &tab = cfg.tabs[i];
@@ -602,7 +596,6 @@ void LoudnessDock::ws_get_loudness_cb(obs_data_t *request, obs_data_t *response)
 		return;
 	}
 
-	std::unique_lock<std::mutex> lock(results_mutex);
 	ws_loudness_set_response(response, results);
 }
 
@@ -754,8 +747,6 @@ void LoudnessDock::on_frontend_event(enum obs_frontend_event event, void *data)
 loudness_t *LoudnessDock::get_by_name(const char *name)
 {
 	ASSERT_THREAD(OBS_TASK_UI);
-
-	std::unique_lock<std::mutex> lock(results_mutex);
 
 	for (size_t i = 0; i < config.tabs.size(); i++) {
 		if (config.tabs[i].name == name)
