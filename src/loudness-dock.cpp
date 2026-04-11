@@ -577,27 +577,38 @@ void LoudnessDock::ws_get_loudness_cb(obs_data_t *request, obs_data_t *response,
 	run_in_ui_and_wait([ld, request, response]() { ld->ws_get_loudness_cb(request, response); });
 }
 
-static void ws_loudness_set_response(obs_data_t *response, double results[5])
+static void ws_loudness_set_response(obs_data_t *response, const loudness_t *loudness, double results[5])
 {
 	obs_data_set_double(response, "momentary", results[0]);
 	obs_data_set_double(response, "short", results[1]);
 	obs_data_set_double(response, "integrated", results[2]);
 	obs_data_set_double(response, "range", results[3]);
 	obs_data_set_double(response, "peak", results[4]);
+
+	if (loudness) {
+		obs_data_set_bool(response, "paused", loudness_paused(loudness));
+
+		struct obs_audio_info oai;
+		if (!obs_get_audio_info(&oai) || oai.samples_per_sec <= 0)
+			return;
+		obs_data_set_double(response, "duration", loudness_frames(loudness) / (double)oai.samples_per_sec);
+	}
 }
 
 void LoudnessDock::ws_get_loudness_cb(obs_data_t *request, obs_data_t *response)
 {
 	ASSERT_THREAD(OBS_TASK_UI);
 
+	bool verbose = obs_data_get_bool(request, "verbose");
+
 	if (loudness_t *loudness = get_by_name_in_data(request)) {
 		double res[5];
 		loudness_get(loudness, res, LOUDNESS_GET_SHORT | LOUDNESS_GET_LONG);
-		ws_loudness_set_response(response, res);
+		ws_loudness_set_response(response, verbose ? loudness : nullptr, res);
 		return;
 	}
 
-	ws_loudness_set_response(response, results);
+	ws_loudness_set_response(response, verbose ? get() : nullptr, results);
 }
 
 void LoudnessDock::ws_reset_cb(obs_data_t *request, obs_data_t *, void *priv_data)
