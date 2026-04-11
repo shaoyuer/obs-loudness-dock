@@ -12,6 +12,7 @@ def _get_args():
     parser.add_argument('-p', '--pause', action='store_true')
     parser.add_argument('-s', '--resume', action='store_true')
     parser.add_argument('-l', '--list-names', action='store_true')
+    parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('--name', action='store', default=None)
     return parser.parse_args()
 
@@ -54,6 +55,8 @@ def _main():
         })
 
     if not (args.pause or args.resume or args.reset):
+        if args.verbose:
+            data |= {'verbose': True}
         res = cl.send('CallVendorRequest', {
             'vendorName': 'loudness-dock',
             'requestType': 'get_loudness',
@@ -64,6 +67,9 @@ def _main():
             if value is None:
                 value = float('-inf')
             print(f'{field}: {value:.1f}')
+        if args.verbose:
+            print(f'duration: {res.response_data["duration"]:.1f}')
+            print(f'paused: {res.response_data["paused"]}')
 
 
 if __name__ == '__main__':
