@@ -30,6 +30,7 @@ int loudness_track(const loudness_t *loudness);
 void loudness_set_pause(loudness_t *loudness, bool paused);
 bool loudness_paused(const loudness_t *loudness);
 void loudness_reset(loudness_t *loudness);
+size_t loudness_frames(const loudness_t *loudness);
 
 #ifdef __cplusplus
 } // extern "C"

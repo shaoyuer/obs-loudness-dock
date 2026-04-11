@@ -30,6 +30,7 @@ struct loudness
 {
 	int track;
 	ebur128_state *state;
+	size_t frames;
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
 	pthread_t thread;
@@ -48,6 +49,8 @@ static bool init_state(loudness_t *loudness)
 		blog(LOG_ERROR, "obs_get_audio_info failed");
 		return false;
 	}
+
+	loudness->frames = 0;
 
 	int mode = EBUR128_MODE_M | EBUR128_MODE_S | EBUR128_MODE_I | EBUR128_MODE_LRA | EBUR128_MODE_TRUE_PEAK;
 	loudness->state = ebur128_init(get_audio_channels(oai.speakers), oai.samples_per_sec, mode);
@@ -197,6 +200,7 @@ void *process_thread(void *param)
 #endif
 		size_t frames = loudness->buf.num / loudness->state->channels;
 		ebur128_add_frames_float(loudness->state, loudness->buf.array, frames);
+		loudness->frames += frames;
 		loudness->buf.num = 0; // equivalent to `da_clear` but requires LIBOBS_API_VER >= 30.0.0
 #ifdef ENABLE_PROFILE
 		profile_end(name_ebur128_add_frames);
@@ -242,4 +246,9 @@ void loudness_reset(loudness_t *loudness)
 	init_state(loudness);
 
 	pthread_mutex_unlock(&loudness->mutex);
+}
+
+size_t loudness_frames(const loudness_t *loudness)
+{
+	return loudness->frames;
 }
